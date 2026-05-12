@@ -28,12 +28,19 @@ export default async function handler(req, res) {
         formData.append('id', process.env.NL_PRODUCT_ID);
         formData.append('amount', '1'); 
 
-        console.log("Bắt đầu phi sang web nguồn mua hàng...");
+        console.log("Bắt đầu ngụy trang thành người thật, phi sang web nguồn mua hàng...");
         
         const nlResponse = await fetch(nguyenLieuApiUrl, {
             method: 'POST',
             body: formData,
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            headers: { 
+                'Content-Type': 'application/x-www-form-urlencoded',
+                // Đeo mặt nạ giả làm trình duyệt Chrome trên máy tính Windows
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/javascript, */*; q=0.01',
+                'Referer': 'https://nguyenlieummo.vn/',
+                'Origin': 'https://nguyenlieummo.vn'
+            }
         });
 
         // Đọc dữ liệu thô để bắt lỗi tường lửa Cloudflare
