@@ -1,26 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Khởi tạo kết nối Supabase (Sếp giấu URL và Key vào file .env trên Vercel)
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 export default async function handler(req, res) {
-    // Cho phép gọi chéo miền (CORS) để web mặt tiền gọi được
     res.setHeader('Access-Control-Allow-Origin', '*');
-    
     const { code } = req.query;
 
-    if (!code) {
-        return res.status(400).json({ error: "Sếp chưa nhập mã code kìa!" });
-    }
+    if (!code) return res.status(400).json({ error: "Sếp chưa nhập mã code kìa!" });
 
     try {
         // 1. CHUI VÀO SUPABASE KIỂM TRA MÃ
         const { data: voucher, error: dbError } = await supabase
-            .from('vouchers')
-            .select('*')
-            .eq('code', code)
-            .eq('is_used', false)
-            .single(); // Chỉ lấy 1 dòng
+            .from('vouchers').select('*').eq('code', code).eq('is_used', false).single();
 
         if (dbError || !voucher) {
             return res.status(400).json({ error: "Mã không hợp lệ hoặc đã bị thằng khác húp rồi!" });
@@ -29,39 +20,45 @@ export default async function handler(req, res) {
         // 2. MÃ NGON! PHI SANG NGUYENLIEUMMO MUA HÀNG
         const nguyenLieuApiUrl = 'https://nguyenlieummo.vn/api/buy';
         
-        // Setup gói dữ liệu form-data chuẩn bài
         const formData = new URLSearchParams();
+        // Bơm cả 2 kiểu api_key và apikey vì nhiều web MMO code rất ngáo
+        formData.append('apikey', process.env.NL_API_KEY); 
+        formData.append('api_key', process.env.NL_API_KEY);
         formData.append('action', 'buyProduct');
-        formData.append('id', process.env.NL_PRODUCT_ID); // ID loại acc trên NguyenLieuMMO (Giấu ở .env)
-        formData.append('amount', '1'); // Đang test hệ 1 đổi 1
-        formData.append('api_key', process.env.NL_API_KEY); // API Key bí mật của sếp (Giấu ở .env)
+        formData.append('id', process.env.NL_PRODUCT_ID);
+        formData.append('amount', '1'); 
 
+        console.log("Bắt đầu phi sang web nguồn mua hàng...");
+        
         const nlResponse = await fetch(nguyenLieuApiUrl, {
             method: 'POST',
             body: formData,
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
 
-        const nlData = await nlResponse.json();
+        // Đọc dữ liệu thô để bắt lỗi tường lửa Cloudflare
+        const rawText = await nlResponse.text(); 
+        console.log("Web nguồn trả về cục này: ", rawText);
 
-        if (nlData.status === 'success') {
-            // 3. MUA THÀNH CÔNG! KHÓA MÃ TRÊN SUPABASE LẠI NGAY LẬP TỨC
-            await supabase
-                .from('vouchers')
-                .update({ is_used: true })
-                .eq('id', voucher.id);
+        let nlData;
+        try {
+            nlData = JSON.parse(rawText);
+        } catch(e) {
+            console.error("Lỗi Parse JSON - Bị tường lửa chặn!");
+            return res.status(500).json({ error: "Bị tường lửa của web nguồn chặn mọe nó rồi (Cloudflare)!" });
+        }
 
-            // 4. TRẢ HÀNG CHO KHÁCH
-            return res.status(200).json({ 
-                success: true, 
-                data: nlData.data // Đây là chuỗi Mail Edu bên kia nhả về
-            });
+        if (nlData.status === 'success' || nlData.status === true || nlData.status === 200) {
+            // MUA THÀNH CÔNG -> KHÓA MÃ LẠI
+            await supabase.from('vouchers').update({ is_used: true }).eq('id', voucher.id);
+            return res.status(200).json({ success: true, data: nlData.data || nlData.list || "Mua thành công!" });
         } else {
-            // Lỗi từ phía NguyenLieuMMO (Hết hàng, hết tiền...)
-            return res.status(500).json({ error: "Kho nguồn đang bảo trì hoặc hết hàng, vui lòng báo lại Shop!" });
+            // LỖI TỪ PHÍA WEB NGUỒN (Hết tiền, sai key, sai ID...)
+            return res.status(500).json({ error: "Từ chối bán: " + (nlData.msg || nlData.message || "Không rõ lý do") });
         }
 
     } catch (err) {
-        return res.status(500).json({ error: "Lỗi hệ thống máy chủ, rớt mạng rớt màng!" });
+        console.error("LỖI MÁY CHỦ SẬP NGUỒN:", err);
+        return res.status(500).json({ error: "Bệnh án hệ thống: " + err.message });
     }
 }
