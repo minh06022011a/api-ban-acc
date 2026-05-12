@@ -3,47 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trạm Xuất Mail Edu VIP</title>
+    <title>Hệ Thống Kích Hoạt Edu Mail</title>
     <style>
-        body { font-family: Arial; background-color: #f4f7f6; text-align: center; padding: 50px; }
-        .container { background: #fff; padding: 30px; border-radius: 10px; max-width: 500px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        input { width: 80%; padding: 12px; margin-bottom: 20px; text-align: center; font-weight: bold; }
-        button { padding: 12px 25px; cursor: pointer; color: #fff; font-weight: bold; border: none; border-radius: 5px;}
-        .btn-nhan { background-color: #28a745; }
-        .btn-tai { background-color: #007bff; display: none; }
-        textarea { width: 100%; height: 150px; margin-top: 20px; display: none; padding: 10px; font-family: monospace;}
-        #loading { display: none; color: #d39e00; margin-top: 10px; font-weight: bold;}
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a2e; color: #fff; text-align: center; padding: 10% 20px; margin: 0; }
+        .container { background: #16213e; padding: 40px 30px; border-radius: 12px; max-width: 450px; margin: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border: 1px solid #0f3460; }
+        h2 { color: #e94560; margin-bottom: 5px; font-size: 24px;}
+        p.sub { color: #a1a1aa; font-size: 14px; margin-bottom: 25px; }
+        input { width: 90%; padding: 15px; margin-bottom: 20px; text-align: center; font-weight: bold; border-radius: 8px; border: 2px solid #0f3460; background: #0f3460; color: #fff; outline: none; font-size: 16px; letter-spacing: 1px;}
+        input:focus { border-color: #e94560; }
+        button { padding: 15px; width: 100%; cursor: pointer; color: #fff; font-weight: bold; font-size: 16px; border: none; border-radius: 8px; transition: 0.3s; }
+        .btn-nhan { background-color: #e94560; }
+        .btn-nhan:hover { background-color: #d13d56; }
+        .btn-tai { background-color: #007bff; display: none; margin-top: 15px; }
+        textarea { width: 95%; height: 120px; margin-top: 20px; display: none; padding: 15px; font-family: monospace; border-radius: 8px; background: #000; color: #0f0; border: 1px solid #333; resize: none; font-size: 14px;}
+        #loading { display: none; color: #f39c12; margin-top: 15px; font-weight: bold;}
     </style>
 </head>
 <body>
-
 <div class="container">
-    <h2>🎁 TRẠM ĐỔI MÃ VOUCHER</h2>
-    <input type="text" id="maVoucher" placeholder="Nhập mã Voucher mua trên Avia...">
-    <br>
-    <button class="btn-nhan" onclick="nhanHang()">TIẾN HÀNH XUẤT KHO</button>
-    <p id="loading">⏳ Hệ thống đang check mã và gọi hàng, chờ tí...</p>
-
+    <h2>🚀 GET EDU MAIL LIVE</h2>
+    <p class="sub">Nhập mã Key bạn đã mua trên sàn vào đây</p>
+    <input type="text" id="maVoucher" placeholder="Ví dụ: VIP-XXXX-XXXX-XXXX">
+    <button class="btn-nhan" onclick="nhanHang()">TIẾN HÀNH KÍCH HOẠT</button>
+    <p id="loading">⏳ Đang kết nối server, vui lòng chờ...</p>
     <textarea id="ketQua" readonly></textarea>
-    <button id="btnTaiTxt" class="btn-tai" onclick="taiFileTxt()">📥 Tải File TXT</button>
+    <button id="btnTaiTxt" class="btn-tai" onclick="taiFileTxt()">📥 Tải định dạng TXT</button>
 </div>
-
 <script>
+    // GIỮ NGUYÊN PHẦN SCRIPT CŨ CỦA SẾP Ở ĐÂY LÀ ĐƯỢC
     async function nhanHang() {
         const maCode = document.getElementById('maVoucher').value.trim();
-        if (!maCode) return alert('Nhập mã vào đi người anh em!');
-
+        if (!maCode) return alert('Vui lòng nhập mã Key!');
         document.getElementById('loading').style.display = 'block';
         document.getElementById('ketQua').style.display = 'none';
         document.getElementById('btnTaiTxt').style.display = 'none';
-
         try {
-            // ANH ĐÃ RÁP SẴN LINK VERCEL CỦA SẾP VÀO ĐÂY RỒI NHÉ!
             const response = await fetch(`https://api-ban-acc-6r4g.vercel.app/api/redeem?code=${maCode}`);
             const result = await response.json();
-
             document.getElementById('loading').style.display = 'none';
-
             if (result.success) {
                 document.getElementById('ketQua').value = result.data;
                 document.getElementById('ketQua').style.display = 'block';
@@ -53,19 +50,17 @@
             }
         } catch (error) {
             document.getElementById('loading').style.display = 'none';
-            alert('Lỗi mẹ máy chủ rồi!');
+            alert('Lỗi kết nối đến máy chủ!');
         }
     }
-
     function taiFileTxt() {
         const noiDung = document.getElementById('ketQua').value;
         const blob = new Blob([noiDung], { type: "text/plain" });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = "Mail_Edu_Live.txt";
+        a.download = "EduMail.txt";
         a.click();
     }
 </script>
-
 </body>
 </html>
