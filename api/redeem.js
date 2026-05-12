@@ -21,21 +21,21 @@ export default async function handler(req, res) {
         const apiKey = process.env.NL_API_KEY;
         const productId = process.env.NL_PRODUCT_ID;
         const nguyenLieuApiUrl = 'https://nguyenlieummo.vn/api/buy_product';
-
-        console.log("Cầm đúng chìa khóa rồi, phi thẳng vào kho lấy hàng...");
         
-        // Đóng gói dữ liệu gửi đi (bơm cả api_key và apikey đề phòng nó bắt bẻ)
+        // Đóng gói dữ liệu gửi đi (Bơm ĐỦ 3 THÔNG SỐ)
         const formData = new URLSearchParams();
         formData.append('api_key', apiKey);
         formData.append('apikey', apiKey); 
+        formData.append('action', 'buyProduct'); // Đã thêm lệnh mua hàng chuẩn đét!
         formData.append('id', productId);
         formData.append('amount', '1');
+
+        console.log("Đã đủ thông số, phi thẳng vào quầy thanh toán...");
 
         const nlResponse = await fetch(nguyenLieuApiUrl, {
             method: 'POST', 
             headers: { 
                 'Content-Type': 'application/x-www-form-urlencoded',
-                // Vẫn đeo mặt nạ Chrome để chống Cloudflare
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                 'Accept': 'application/json, text/javascript, */*; q=0.01'
             },
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
             const thongTinMail = nlData.data || nlData.list || JSON.stringify(nlData);
             return res.status(200).json({ success: true, data: thongTinMail });
         } else {
-            // Hết tiền, sai ID, bảo trì... thì nó báo ở đây
+            // Hết tiền, sai ID, bảo trì...
             return res.status(500).json({ error: "Web nguồn từ chối bán: " + (nlData.msg || nlData.message || "Không rõ lý do") });
         }
 
