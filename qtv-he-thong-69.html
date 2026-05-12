@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Quản Trị Hệ Thống</title>
+    <style>
+        body { font-family: monospace; background-color: #0d0d0d; color: #0f0; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: #111; padding: 20px; border: 1px solid #0f0; border-radius: 8px; box-shadow: 0 0 10px #0f02; }
+        h2 { text-align: center; color: #fff; text-shadow: 0 0 5px #0f0; }
+        .auth-box { border-bottom: 1px dashed #444; padding-bottom: 20px; margin-bottom: 20px; }
+        input, textarea { width: 100%; box-sizing: border-box; padding: 10px; margin-top: 5px; margin-bottom: 15px; background: #000; border: 1px solid #333; color: #0f0; outline: none; font-family: monospace;}
+        input:focus { border-color: #0f0; }
+        .row { display: flex; gap: 10px; }
+        .row input { width: 50%; }
+        button { width: 100%; padding: 12px; font-weight: bold; background: #0f0; color: #000; border: none; cursor: pointer; border-radius: 4px; transition: 0.2s; margin-bottom: 10px; }
+        button:hover { background: #fff; }
+        button.btn-view { background: #333; color: #0f0; border: 1px solid #0f0; }
+        button.btn-view:hover { background: #0f0; color: #000; }
+        .result-box { display: none; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>[ ADMIN PANEL ]</h2>
+    
+    <div class="auth-box">
+        <label>► SUPABASE URL:</label>
+        <input type="text" id="dbUrl" placeholder="https://xxxxx.supabase.co">
+        <label>► SUPABASE API KEY:</label>
+        <input type="password" id="dbKey" placeholder="eyJhbG...">
+        <button onclick="luuThongTin()" style="background: #444; color: #fff;">💾 LƯU CHÌA KHÓA VÀO TRÌNH DUYỆT</button>
+    </div>
+
+    <div class="row">
+        <div>
+            <label>► Tiền tố:</label>
+            <input type="text" id="prefix" value="VIP-">
+        </div>
+        <div>
+            <label>► Số lượng:</label>
+            <input type="number" id="soLuong" value="5">
+        </div>
+    </div>
+    
+    <button onclick="taoKey()">⚡ TẠO & ĐẨY LÊN DATABASE</button>
+    <button class="btn-view" onclick="xemKeyUnused()">👁️ XEM KEY CÒN SỐNG TRONG KHO</button>
+
+    <div class="result-box" id="ketQuaBox">
+        <label>► LOG HỆ THỐNG / KẾT QUẢ:</label>
+        <textarea id="logArea" rows="10" readonly></textarea>
+        <button id="btnCopy" onclick="copyLog()">📋 COPY TẤT CẢ</button>
+    </div>
+</div>
+
+<script>
+    // Khôi phục chìa khóa nếu đã lưu trước đó
+    window.onload = () => {
+        if(localStorage.getItem('sb_url')) document.getElementById('dbUrl').value = localStorage.getItem('sb_url');
+        if(localStorage.getItem('sb_key')) document.getElementById('dbKey').value = localStorage.getItem('sb_key');
+    };
+
+    function luuThongTin() {
+        localStorage.setItem('sb_url', document.getElementById('dbUrl').value.trim());
+        localStorage.setItem('sb_key', document.getElementById('dbKey').value.trim());
+        alert("Đã lưu chìa khóa vào máy này! Lần sau vào không cần nhập lại.");
+    }
+
+    function hienThiLog(text) {
+        document.getElementById('ketQuaBox').style.display = 'block';
+        document.getElementById('logArea').value = text;
+    }
+
+    // Thuật toán tạo Key siêu phức tạp (VD: VIP-K8F2-9M4P-X7R1)
+    function sinhKey(prefix) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let str = '';
+        for(let i=0; i<12; i++) {
+            if(i>0 && i%4===0) str += '-';
+            str += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return prefix + str;
+    }
+
+    async function taoKey() {
+        const url = document.getElementById('dbUrl').value.trim();
+        const key = document.getElementById('dbKey').value.trim();
+        if(!url || !key) return alert("Nhập chìa khóa Supabase ở trên trước sếp ơi!");
+
+        const prefix = document.getElementById('prefix').value.trim();
+        const sl = parseInt(document.getElementById('soLuong').value);
+        
+        let dsKey = [];
+        let stringKey = "";
+
+        hienThiLog("Đang kết nối Database...");
+
+        for(let i=0; i<sl; i++) {
+            const newCode = sinhKey(prefix);
+            dsKey.push({ code: newCode, is_used: false });
+            stringKey += newCode + "\n";
+        }
+
+        try {
+            const res = await fetch(`${url}/rest/v1/vouchers`, {
+                method: 'POST',
+                headers: {
+                    'apikey': key,
+                    'Authorization': 'Bearer ' + key,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify(dsKey)
+            });
+
+            if(res.ok) {
+                hienThiLog(`[+] Bơm thành công ${sl} Key lên kho!\n\nDANH SÁCH KEY:\n` + stringKey);
+            } else {
+                hienThiLog("[!] LỖI TỪ DATABASE:\n" + await res.text());
+            }
+        } catch(e) {
+            hienThiLog("[!] LỖI KẾT NỐI:\n" + e);
+        }
+    }
+
+    async function xemKeyUnused() {
+        const url = document.getElementById('dbUrl').value.trim();
+        const key = document.getElementById('dbKey').value.trim();
+        if(!url || !key) return alert("Nhập chìa khóa Supabase ở trên trước sếp ơi!");
+
+        hienThiLog("Đang check kho...");
+
+        try {
+            const res = await fetch(`${url}/rest/v1/vouchers?is_used=eq.false&select=code`, {
+                method: 'GET',
+                headers: {
+                    'apikey': key,
+                    'Authorization': 'Bearer ' + key
+                }
+            });
+
+            if(res.ok) {
+                const data = await res.json();
+                let danhSach = data.map(item => item.code).join('\n');
+                hienThiLog(`[+] CÒN SỐNG ${data.length} KEY TRONG KHO:\n\n` + danhSach);
+            } else {
+                hienThiLog("[!] LỖI:\n" + await res.text());
+            }
+        } catch(e) {
+            hienThiLog("[!] LỖI KẾT NỐI:\n" + e);
+        }
+    }
+
+    function copyLog() {
+        const text = document.getElementById('logArea').value;
+        // Bóc tách lấy mỗi mã key để copy cho lẹ (Bỏ phần chữ giải thích)
+        const keysOnly = text.split('\n').filter(line => line.includes('-') && !line.includes('[+]')).join('\n');
+        navigator.clipboard.writeText(keysOnly || text);
+        alert("Đã copy vô khay nhớ tạm!");
+    }
+</script>
+
+</body>
+</html>
