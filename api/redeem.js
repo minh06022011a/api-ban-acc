@@ -17,42 +17,31 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: "Mã không hợp lệ hoặc đã bị thằng khác húp rồi!" });
         }
 
-        // 2. MÃ NGON! PHI SANG NGUYENLIEUMMO MUA HÀNG
-        const nguyenLieuApiUrl = 'https://nguyenlieummo.vn/api/buy';
-        
-        const formData = new URLSearchParams();
-        // Bơm cả 2 kiểu api_key và apikey vì nhiều web MMO code rất ngáo
-        formData.append('apikey', process.env.NL_API_KEY); 
-        formData.append('api_key', process.env.NL_API_KEY);
-        formData.append('action', 'buyProduct');
-        formData.append('id', process.env.NL_PRODUCT_ID);
-        formData.append('amount', '1'); 
+        // 2. LẮP RÁP ĐƯỜNG LINK GET CHUẨN ĐUÔI .PHP
+        // Dùng đúng cấu trúc: /api/buy.php?api_key=...&action=buyProduct&id=...&amount=1
+        const apiKey = process.env.NL_API_KEY;
+        const productId = process.env.NL_PRODUCT_ID;
+        const nguyenLieuApiUrl = `https://nguyenlieummo.vn/api/buy.php?api_key=${apiKey}&action=buyProduct&id=${productId}&amount=1`;
 
-        console.log("Bắt đầu ngụy trang thành người thật, phi sang web nguồn mua hàng...");
+        console.log("Đang phi xe máy gọi API bằng lệnh GET...");
         
         const nlResponse = await fetch(nguyenLieuApiUrl, {
-            method: 'POST',
-            body: formData,
+            method: 'GET',
             headers: { 
-                'Content-Type': 'application/x-www-form-urlencoded',
-                // Đeo mặt nạ giả làm trình duyệt Chrome trên máy tính Windows
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/javascript, */*; q=0.01',
-                'Referer': 'https://nguyenlieummo.vn/',
-                'Origin': 'https://nguyenlieummo.vn'
+                'Accept': 'application/json, text/javascript, */*; q=0.01'
             }
         });
 
-        // Đọc dữ liệu thô để bắt lỗi tường lửa Cloudflare
+        // Đọc dữ liệu
         const rawText = await nlResponse.text(); 
-        console.log("Web nguồn trả về cục này: ", rawText);
+        console.log("Web nguồn trả về: ", rawText);
 
         let nlData;
         try {
             nlData = JSON.parse(rawText);
         } catch(e) {
-            console.error("Lỗi Parse JSON - Bị tường lửa chặn!");
-            return res.status(500).json({ error: "Bị tường lửa của web nguồn chặn mọe nó rồi (Cloudflare)!" });
+            return res.status(500).json({ error: "Bị block mọe rồi, nó trả về cục này: " + rawText.substring(0, 100) });
         }
 
         if (nlData.status === 'success' || nlData.status === true || nlData.status === 200) {
