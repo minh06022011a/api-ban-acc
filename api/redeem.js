@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     if (!code) return res.status(400).json({ error: "Sếp chưa nhập mã code kìa!" });
 
     try {
-        // 1. CHUI VÀO SUPABASE KIỂM TRA MÃ
+        // 1. CHUI VÀO SUPABASE KIỂM TRA MÃ VOUCHER
         const { data: voucher, error: dbError } = await supabase
             .from('vouchers').select('*').eq('code', code).eq('is_used', false).single();
 
@@ -17,45 +17,48 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: "Mã không hợp lệ hoặc đã bị thằng khác húp rồi!" });
         }
 
-        // 2. LẮP RÁP LINK MUA HÀNG CHUẨN (DÙNG ORDER.PHP)
+        // 2. PHI SANG BUY.PHP ĐỂ CHỐT ĐƠN
         const apiKey = process.env.NL_API_KEY;
         const productId = process.env.NL_PRODUCT_ID;
-        // Đã sửa thành order.php và ghép thông số mua hàng
-        const nguyenLieuApiUrl = `https://nguyenlieummo.vn/api/order.php?api_key=${apiKey}&id=${productId}&amount=1`;
+        
+        // Link mua hàng chuẩn: dùng buy.php và nạp đủ action, id, amount
+        const nguyenLieuApiUrl = `https://nguyenlieummo.vn/api/buy.php?api_key=${apiKey}&action=buyProduct&id=${productId}&amount=1`;
 
-        console.log("Đã tìm đúng cửa order.php, phi xe vào lấy hàng...");
+        console.log("Đang cầm tiền phi vào buy.php mua hàng...");
         
         const nlResponse = await fetch(nguyenLieuApiUrl, {
-            method: 'GET', // Chạy bằng GET cho mượt, xuyên mọi tường lửa
+            method: 'GET', 
             headers: { 
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                 'Accept': 'application/json, text/javascript, */*; q=0.01'
             }
         });
 
-        // Đọc dữ liệu trả về
         const rawText = await nlResponse.text(); 
-        console.log("Web nguồn trả về: ", rawText);
+        console.log("Web nguồn phản hồi: ", rawText);
 
         let nlData;
         try {
             nlData = JSON.parse(rawText);
         } catch(e) {
-            return res.status(500).json({ error: "Lỗi bất thường từ web nguồn: " + rawText.substring(0, 100) });
+            // Nếu nó báo File not found thì mình in ra để soi lỗi
+            return res.status(500).json({ error: "Web nguồn báo: " + rawText });
         }
 
-        if (nlData.status === 'success' || nlData.status === true || nlData.status === 200 || nlData.message === 'Thành công') {
-            // MUA THÀNH CÔNG -> KHÓA MÃ LẠI
+        // Kiểm tra xem nó có nhả hàng không
+        if (nlData.status === 'success' || nlData.status === true || nlData.status === 200) {
+            // MUA THÀNH CÔNG -> CẬP NHẬT SUPABASE
             await supabase.from('vouchers').update({ is_used: true }).eq('id', voucher.id);
-            // Trả con Mail Edu ra màn hình
-            return res.status(200).json({ success: true, data: nlData.data || nlData.list || "Mua thành công!" });
+            
+            // Lấy dữ liệu mail (thường nằm trong nlData.data hoặc nlData.list)
+            const thongTinMail = nlData.data || nlData.list || JSON.stringify(nlData);
+            return res.status(200).json({ success: true, data: thongTinMail });
         } else {
-            // LỖI TỪ PHÍA WEB NGUỒN (Hết tiền, sai ID, sai Key...)
-            return res.status(500).json({ error: "Từ chối bán: " + (nlData.msg || nlData.message || "Không rõ lý do") });
+            // Lỗi từ phía web (hết tiền, sai key...)
+            return res.status(500).json({ error: "Web nguồn từ chối: " + (nlData.msg || nlData.message || "Lỗi không xác định") });
         }
 
     } catch (err) {
-        console.error("LỖI MÁY CHỦ SẬP NGUỒN:", err);
-        return res.status(500).json({ error: "Bệnh án hệ thống: " + err.message });
+        return res.status(500).json({ error: "Lỗi hệ thống: " + err.message });
     }
 }
