@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Quản Trị Key - V2.0</title>
+    <title>Hệ Thống Quản Trị Key - V2.1 (Fix Lỗi Liệt Nút)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #0f172a; color: #e2e8f0; padding: 20px; text-align: center; }
@@ -25,7 +25,7 @@
     
     <input type="text" id="supaUrl" placeholder="Nhập Supabase URL">
     <input type="password" id="supaKey" placeholder="Nhập Supabase API Key (service_role)">
-    <input type="number" id="numKeys" placeholder="Số lượng Key muốn tạo (Khuyên dùng < 5000)">
+    <input type="number" id="numKeys" placeholder="Số lượng Key (Khuyên dùng < 5000)">
     
     <button class="btn-create" onclick="createKeys()">🚀 BƠM KEY LÊN HỆ THỐNG</button>
     
@@ -44,15 +44,17 @@
     let generatedKeys = [];
 
     async function createKeys() {
-        const url = document.getElementById('supaUrl').value;
-        const key = document.getElementById('supaKey').value;
+        const url = document.getElementById('supaUrl').value.trim();
+        const key = document.getElementById('supaKey').value.trim();
         const count = parseInt(document.getElementById('numKeys').value);
         const status = document.getElementById('status');
         const logBox = document.getElementById('logBox');
 
         if (!url || !key || !count) return alert("Sếp nhập thiếu thông tin kìa!");
 
-        const supabase = supabase.createClient(url, key);
+        // ĐÃ FIX LỖI: Đổi tên biến thành supaClient để hệ thống không bị lú
+        const supaClient = supabase.createClient(url, key);
+        
         status.innerText = "⏳ Đang 'nặn' Key và bơm dữ liệu...";
         generatedKeys = [];
         logBox.innerHTML = "";
@@ -65,52 +67,50 @@
             generatedKeys.push(newKey);
         }
 
-        // Bơm dữ liệu theo lô để né lỗi Payload Too Large
         const chunkSize = 1000;
         for (let i = 0; i < dataToInsert.length; i += chunkSize) {
             const chunk = dataToInsert.slice(i, i + chunkSize);
-            const { error } = await supabase.from('vouchers').insert(chunk);
+            const { error } = await supaClient.from('vouchers').insert(chunk);
             if (error) {
                 status.innerText = "❌ Lỗi: " + error.message;
                 return;
             }
-            logBox.innerHTML += `✅ Đã bơm xong ${i + chunk.length}/${count} key...<br>`;
+            logBox.innerHTML += `✅ Đã bơm xong lô ${i + chunk.length}/${count} key...<br>`;
         }
 
-        status.innerText = `🎉 THÀNH CÔNG! Đã tạo ${count} Key.`;
+        status.innerText = `🎉 THÀNH CÔNG! Đã nạp ${count} Key vào kho.`;
     }
 
-    // HÀM HACK NÉ LỖI COPY: Tải file trực tiếp
     function downloadTxt() {
         if (generatedKeys.length === 0) return alert("Có gì đâu mà tải sếp?");
         const blob = new Blob([generatedKeys.join('\n')], { type: 'text/plain' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `Lô_Key_Edu_${new Date().getTime()}.txt`;
+        a.download = `Lo_Key_Edu_${new Date().getTime()}.txt`;
         a.click();
     }
 
-    // HÀM XÓA SẠCH DATABASE (DỌN KHO)
     async function deleteAllKeys() {
-        const confirmDel = confirm("CẢNH BÁO: Sếp có chắc muốn XÓA SẠCH toàn bộ Key trong Database không? Không khôi phục được đâu nhé!");
+        const confirmDel = confirm("CẢNH BÁO TỐI CAO: Sếp có chắc muốn XÓA SẠCH toàn bộ Key trong Database không? Bay màu luôn đó!");
         if (!confirmDel) return;
 
-        const url = document.getElementById('supaUrl').value;
-        const key = document.getElementById('supaKey').value;
-        if (!url || !key) return alert("Sếp nhập URL và Key vào mới xóa được chứ!");
+        const url = document.getElementById('supaUrl').value.trim();
+        const key = document.getElementById('supaKey').value.trim();
+        if (!url || !key) return alert("Sếp nhập URL và Key vào mới có quyền xóa chứ!");
 
-        const supabase = supabase.createClient(url, key);
-        document.getElementById('status').innerText = "⏳ Đang quét sạch kho... Đợi tí...";
+        // ĐÃ FIX LỖI: Đổi tên biến thành supaClient
+        const supaClient = supabase.createClient(url, key);
+        document.getElementById('resultArea').style.display = "block";
+        document.getElementById('status').innerText = "⏳ Đang rải thảm bom dọn kho... Đợi tí...";
+        document.getElementById('logBox').innerHTML = "";
 
-        // Xóa tất cả dòng
-        const { error } = await supabase.from('vouchers').delete().neq('status', 'nothing');
+        const { error } = await supaClient.from('vouchers').delete().neq('status', 'nothing');
 
         if (error) {
             alert("Lỗi khi xóa: " + error.message);
         } else {
             alert("🔥 ĐÃ DỌN SẠCH KHO! Database trống rỗng rồi sếp.");
-            document.getElementById('status').innerText = "✅ Kho đã trống.";
-            document.getElementById('logBox').innerHTML = "";
+            document.getElementById('status').innerText = "✅ Kho đã được dọn sạch không còn 1 cọng rác.";
             generatedKeys = [];
         }
     }
