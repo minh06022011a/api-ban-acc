@@ -3,117 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Quản Trị Key - V2.1 (Fix Lỗi Liệt Nút)</title>
+    <title>ADMIN PANEL V3.5 - BULK MODE</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #0f172a; color: #e2e8f0; padding: 20px; text-align: center; }
-        .container { max-width: 600px; margin: auto; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        input, textarea { width: 90%; padding: 12px; margin: 10px 0; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #38bdf8; }
-        button { width: 95%; padding: 12px; margin: 8px 0; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-create { background: #38bdf8; color: #0f172a; }
-        .btn-download { background: #10b981; color: white; }
-        .btn-delete { background: #f43f5e; color: white; }
-        .btn-create:hover { background: #7dd3fc; }
-        #status { margin-top: 15px; font-weight: bold; color: #fbbf24; }
-        .log-box { height: 150px; overflow-y: auto; text-align: left; font-size: 12px; background: #000; padding: 10px; margin-top: 10px; border-radius: 4px; border: 1px solid #334155; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #0b1120; color: #f8fafc; padding: 20px; display: flex; justify-content: center; }
+        .container { background-color: #1e293b; border-radius: 16px; padding: 30px; width: 100%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #334155; }
+        h2 { text-align: center; color: #38bdf8; text-transform: uppercase; margin-bottom: 25px; }
+        input { width: 100%; box-sizing: border-box; padding: 14px; margin-bottom: 15px; background-color: #0f172a; border: 1px solid #475569; color: #38bdf8; border-radius: 8px; outline: none; }
+        .mode-switch { background: #334155; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 12px; }
+        .btn-create { background: linear-gradient(135deg, #0ea5e9, #2563eb); color: white; }
+        .btn-delete { background: #f43f5e; color: white; opacity: 0.8; font-size: 12px; }
+        #logBox { background: #000; color: #a3e635; padding: 12px; border-radius: 8px; font-size: 12px; height: 120px; overflow-y: auto; font-family: monospace; border: 1px solid #334155; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>🛠 QUẢN TRỊ VIÊN HỆ THỐNG 69</h2>
-    
-    <input type="text" id="supaUrl" placeholder="Nhập Supabase URL">
-    <input type="password" id="supaKey" placeholder="Nhập Supabase API Key (service_role)">
-    <input type="number" id="numKeys" placeholder="Số lượng Key (Khuyên dùng < 5000)">
-    
-    <button class="btn-create" onclick="createKeys()">🚀 BƠM KEY LÊN HỆ THỐNG</button>
-    
-    <div id="resultArea" style="display:none;">
-        <div id="status"></div>
-        <button class="btn-download" onclick="downloadTxt()">📥 TẢI FILE KEY (.TXT)</button>
-        <div class="log-box" id="logBox"></div>
+    <div class="container">
+        <h2>🚀 XƯỞNG IN KEY SLL V3.5</h2>
+        
+        <input type="text" id="supaUrl" placeholder="Supabase URL">
+        <input type="password" id="supaKey" placeholder="Supabase API Key">
+        <input type="number" id="numKeys" placeholder="Số lượng (Ví dụ: 10000)">
+        
+        <div class="mode-switch">
+            <span>⚡ Chế độ siêu tốc (Không hiện mã)</span>
+            <input type="checkbox" id="bulkMode" checked style="width: auto; margin: 0;">
+        </div>
+
+        <button class="btn-create" onclick="createKeys()">🔥 BẮT ĐẦU BƠM KEY</button>
+        
+        <div id="logBox">Sẵn sàng...</div>
+
+        <button class="btn-delete" onclick="deleteAllKeys()">💀 DỌN SẠCH KHO</button>
     </div>
 
-    <hr style="border: 0.5px solid #334155; margin: 20px 0;">
-    
-    <button class="btn-delete" onclick="deleteAllKeys()">💀 XÓA SẠCH DATABASE (DỌN KHO)</button>
-</div>
-
-<script>
-    let generatedKeys = [];
-
-    async function createKeys() {
-        const url = document.getElementById('supaUrl').value.trim();
-        const key = document.getElementById('supaKey').value.trim();
-        const count = parseInt(document.getElementById('numKeys').value);
-        const status = document.getElementById('status');
-        const logBox = document.getElementById('logBox');
-
-        if (!url || !key || !count) return alert("Sếp nhập thiếu thông tin kìa!");
-
-        // ĐÃ FIX LỖI: Đổi tên biến thành supaClient để hệ thống không bị lú
-        const supaClient = supabase.createClient(url, key);
-        
-        status.innerText = "⏳ Đang 'nặn' Key và bơm dữ liệu...";
-        generatedKeys = [];
-        logBox.innerHTML = "";
-        document.getElementById('resultArea').style.display = "block";
-
-        const dataToInsert = [];
-        for (let i = 0; i < count; i++) {
-            const newKey = `VIP-${Math.random().toString(36).substr(2, 4).toUpperCase()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-            dataToInsert.push({ code: newKey, status: 'live' });
-            generatedKeys.push(newKey);
+    <script>
+        window.onload = function() {
+            if(localStorage.getItem('savedUrl')) document.getElementById('supaUrl').value = localStorage.getItem('savedUrl');
+            if(localStorage.getItem('savedKey')) document.getElementById('supaKey').value = localStorage.getItem('savedKey');
         }
 
-        const chunkSize = 1000;
-        for (let i = 0; i < dataToInsert.length; i += chunkSize) {
-            const chunk = dataToInsert.slice(i, i + chunkSize);
-            const { error } = await supaClient.from('vouchers').insert(chunk);
-            if (error) {
-                status.innerText = "❌ Lỗi: " + error.message;
-                return;
+        async function createKeys() {
+            const url = document.getElementById('supaUrl').value.trim();
+            const key = document.getElementById('supaKey').value.trim();
+            const count = parseInt(document.getElementById('numKeys').value);
+            const isBulk = document.getElementById('bulkMode').checked;
+            const logBox = document.getElementById('logBox');
+
+            if (!url || !key || !count) return Swal.fire('Thiếu dữ liệu!', 'Điền đủ thông số sếp ơi!', 'warning');
+            
+            localStorage.setItem('savedUrl', url);
+            localStorage.setItem('savedKey', key);
+
+            const supaClient = supabase.createClient(url, key);
+            let allGeneratedKeys = [];
+            logBox.innerHTML = "⏳ Đang chuẩn bị dữ liệu...<br>";
+
+            const chunkSize = 1000;
+            for (let i = 0; i < count; i += chunkSize) {
+                const currentBatchSize = Math.min(chunkSize, count - i);
+                const batchData = [];
+                for (let j = 0; j < currentBatchSize; j++) {
+                    const k = `VIP-${Math.random().toString(36).substr(2, 4).toUpperCase()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+                    batchData.push({ code: k });
+                    allGeneratedKeys.push(k);
+                }
+
+                const { error } = await supaClient.from('vouchers').insert(batchData);
+                if (error) return Swal.fire('Lỗi!', error.message, 'error');
+                
+                logBox.innerHTML += `✅ Đã bơm: ${Math.min(i + chunkSize, count)}/${count}<br>`;
+                logBox.scrollTop = logBox.scrollHeight;
             }
-            logBox.innerHTML += `✅ Đã bơm xong lô ${i + chunk.length}/${count} key...<br>`;
+
+            Swal.fire({
+                title: 'THÀNH CÔNG!',
+                text: `Đã nạp ${count} Key. Sếp muốn tải file về luôn không?`,
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'Tải File .txt',
+                cancelButtonText: 'Để sau'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const blob = new Blob([allGeneratedKeys.join('\n')], { type: 'text/plain' });
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `SLL_Keys_${count}_${new Date().getTime()}.txt`;
+                    a.click();
+                }
+            });
         }
 
-        status.innerText = `🎉 THÀNH CÔNG! Đã nạp ${count} Key vào kho.`;
-    }
+        async function deleteAllKeys() {
+            const url = document.getElementById('supaUrl').value.trim();
+            const key = document.getElementById('supaKey').value.trim();
+            if (!url || !key) return Swal.fire('Lỗi!', 'Nhập API Key mới xóa được!', 'error');
 
-    function downloadTxt() {
-        if (generatedKeys.length === 0) return alert("Có gì đâu mà tải sếp?");
-        const blob = new Blob([generatedKeys.join('\n')], { type: 'text/plain' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `Lo_Key_Edu_${new Date().getTime()}.txt`;
-        a.click();
-    }
+            const result = await Swal.fire({
+                title: 'XÓA SẠCH KHO?',
+                text: "Toàn bộ dữ liệu sẽ bay màu!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#f43f5e',
+                confirmButtonText: 'Xóa ngay!',
+                cancelButtonText: 'Hủy'
+            });
 
-    async function deleteAllKeys() {
-        const confirmDel = confirm("CẢNH BÁO TỐI CAO: Sếp có chắc muốn XÓA SẠCH toàn bộ Key trong Database không? Bay màu luôn đó!");
-        if (!confirmDel) return;
-
-        const url = document.getElementById('supaUrl').value.trim();
-        const key = document.getElementById('supaKey').value.trim();
-        if (!url || !key) return alert("Sếp nhập URL và Key vào mới có quyền xóa chứ!");
-
-        // ĐÃ FIX LỖI: Đổi tên biến thành supaClient
-        const supaClient = supabase.createClient(url, key);
-        document.getElementById('resultArea').style.display = "block";
-        document.getElementById('status').innerText = "⏳ Đang rải thảm bom dọn kho... Đợi tí...";
-        document.getElementById('logBox').innerHTML = "";
-
-        const { error } = await supaClient.from('vouchers').delete().neq('status', 'nothing');
-
-        if (error) {
-            alert("Lỗi khi xóa: " + error.message);
-        } else {
-            alert("🔥 ĐÃ DỌN SẠCH KHO! Database trống rỗng rồi sếp.");
-            document.getElementById('status').innerText = "✅ Kho đã được dọn sạch không còn 1 cọng rác.";
-            generatedKeys = [];
+            if (result.isConfirmed) {
+                const supaClient = supabase.createClient(url, key);
+                Swal.fire({ title: 'Đang dọn kho...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+                
+                let keepDeleting = true;
+                while (keepDeleting) {
+                    const { data, error } = await supaClient.from('vouchers').select('code').limit(1000);
+                    if (error || data.length === 0) { keepDeleting = false; break; }
+                    const keys = data.map(i => i.code);
+                    await supaClient.from('vouchers').delete().in('code', keys);
+                }
+                Swal.fire('Xong!', 'Kho đã sạch bóng quân thù.', 'success');
+            }
         }
-    }
-</script>
+    </script>
 </body>
 </html>
