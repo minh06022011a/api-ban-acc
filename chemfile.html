@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOOL BĂM FILE SLL - V4.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b1120; color: #f8fafc; padding: 20px; display: flex; justify-content: center; }
+        .container { background-color: #1e293b; border-radius: 16px; padding: 30px; width: 100%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #334155; }
+        h2 { text-align: center; color: #f43f5e; text-transform: uppercase; margin-bottom: 25px; font-weight: 900; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; font-size: 14px; font-weight: bold; color: #94a3b8; margin-bottom: 8px; }
+        input[type="file"], input[type="number"] { width: 100%; box-sizing: border-box; padding: 12px; background-color: #0f172a; border: 1px solid #475569; color: #38bdf8; border-radius: 8px; font-family: monospace; outline: none; }
+        input:focus { border-color: #f43f5e; }
+        .btn-slice { width: 100%; background: linear-gradient(135deg, #f59e0b, #ea580c); color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; text-transform: uppercase; transition: 0.3s; margin-top: 10px; }
+        .btn-slice:hover { transform: scale(1.02); box-shadow: 0 5px 15px rgba(234, 88, 12, 0.4); }
+        #statsBox { margin-top: 20px; padding: 15px; background: #000; border-radius: 8px; font-family: monospace; font-size: 13px; color: #a6e3a1; border: 1px dashed #45475a; display: none; }
+        #downloadArea { margin-top: 15px; display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; padding-right: 5px; }
+        .btn-download { background: #334155; color: #38bdf8; border: 1px solid #475569; padding: 10px; border-radius: 6px; cursor: pointer; text-align: left; font-family: monospace; font-weight: bold; transition: 0.2s; }
+        .btn-download:hover { background: #475569; color: #fff; }
+        .btn-auto-all { background: #10b981; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>🔪 MÁY CHÉM FILE SLL</h2>
+        
+        <div class="input-group">
+            <label>1. Chọn cái file siêu to khổng lồ của sếp (.txt):</label>
+            <input type="file" id="fileInput" accept=".txt">
+        </div>
+
+        <div class="input-group">
+            <label>2. Muốn mỗi file con chứa bao nhiêu Key?</label>
+            <input type="number" id="linesPerChunk" value="30000" placeholder="Khuyên dùng: 20000 - 30000">
+        </div>
+
+        <button class="btn-slice" onclick="processFile()">⚡ CHÉM FILE NGAY</button>
+        
+        <div id="statsBox"></div>
+        <div id="downloadArea"></div>
+    </div>
+
+    <script>
+        let chunkedFiles = [];
+        let originalFileName = "Key";
+
+        function processFile() {
+            const fileInput = document.getElementById('fileInput').files[0];
+            const linesPerChunk = parseInt(document.getElementById('linesPerChunk').value);
+            const statsBox = document.getElementById('statsBox');
+            const downloadArea = document.getElementById('downloadArea');
+
+            if (!fileInput) return Swal.fire('Lỗi!', 'Sếp chưa chọn file kìa!', 'warning');
+            if (!linesPerChunk || linesPerChunk <= 0) return Swal.fire('Lỗi!', 'Số dòng mỗi file phải lớn hơn 0!', 'warning');
+
+            // Lấy tên file gốc bỏ đuôi .txt đi
+            originalFileName = fileInput.name.replace('.txt', '');
+
+            Swal.fire({ title: 'Đang băm file...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                // Đọc file và băm thành mảng các dòng (lọc luôn dòng trống)
+                const text = e.target.result;
+                const lines = text.split('\n').map(line => line.trim()).filter(line => line !== '');
+                const totalLines = lines.length;
+
+                if (totalLines === 0) {
+                    return Swal.fire('File trống!', 'Trong file đéo có cái Key nào sếp ạ!', 'error');
+                }
+
+                chunkedFiles = [];
+                downloadArea.innerHTML = "";
+                
+                // Thuật toán chia lô
+                for (let i = 0; i < totalLines; i += linesPerChunk) {
+                    const chunk = lines.slice(i, i + linesPerChunk);
+                    chunkedFiles.push(chunk.join('\n'));
+                }
+
+                const totalChunks = chunkedFiles.length;
+
+                // Cập nhật thống kê
+                statsBox.style.display = "block";
+                statsBox.innerHTML = `📊 TỔNG KẾT:<br>- Số Key gốc: ${totalLines.toLocaleString()}<br>- Chém thành: ${totalChunks} file nhỏ<br>- Mỗi file: ~${linesPerChunk.toLocaleString()} Key`;
+
+                // Tạo nút Tải Tất Cả
+                if(totalChunks > 1) {
+                    const autoBtn = document.createElement('button');
+                    autoBtn.className = 'btn-auto-all';
+                    autoBtn.innerHTML = `📥 TẢI TẤT CẢ ${totalChunks} FILE 1 LÚC (TỰ ĐỘNG)`;
+                    autoBtn.onclick = downloadAllAuto;
+                    downloadArea.appendChild(autoBtn);
+                }
+
+                // Tạo các nút tải từng file
+                for (let i = 0; i < totalChunks; i++) {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-download';
+                    btn.innerHTML = `📄 Tải ${originalFileName}_Phan_${i + 1}.txt (${chunkedFiles[i].split('\n').length} dòng)`;
+                    btn.onclick = () => downloadSingleFile(i);
+                    downloadArea.appendChild(btn);
+                }
+
+                Swal.close();
+            };
+
+            reader.readAsText(fileInput);
+        }
+
+        // Tải 1 file lẻ
+        function downloadSingleFile(index) {
+            const blob = new Blob([chunkedFiles[index]], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${originalFileName}_Phan_${index + 1}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Tải tất cả tự động (delay 1 giây mỗi file để né việc Android chặn popup)
+        function downloadAllAuto() {
+            Swal.fire({ title: 'Đang tải hàng loạt...', text: 'Đừng tắt web, trình duyệt đang xả file xuống máy sếp!', icon: 'info', toast: true, position: 'top-end', showConfirmButton: false, timer: chunkedFiles.length * 1000 + 1000 });
+            
+            chunkedFiles.forEach((_, index) => {
+                setTimeout(() => {
+                    downloadSingleFile(index);
+                }, index * 800); // Cách nhau 0.8 giây để Android không bị ngáo
+            });
+        }
+    </script>
+</body>
+</html>
