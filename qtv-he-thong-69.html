@@ -3,135 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TOOL BĂM FILE SLL - V4.0</title>
+    <title>ADMIN PANEL V3.6 - CHỐNG TRÙNG LẶP</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b1120; color: #f8fafc; padding: 20px; display: flex; justify-content: center; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #0b1120; color: #f8fafc; padding: 20px; display: flex; justify-content: center; }
         .container { background-color: #1e293b; border-radius: 16px; padding: 30px; width: 100%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #334155; }
-        h2 { text-align: center; color: #f43f5e; text-transform: uppercase; margin-bottom: 25px; font-weight: 900; }
-        .input-group { margin-bottom: 15px; text-align: left; }
-        label { display: block; font-size: 14px; font-weight: bold; color: #94a3b8; margin-bottom: 8px; }
-        input[type="file"], input[type="number"] { width: 100%; box-sizing: border-box; padding: 12px; background-color: #0f172a; border: 1px solid #475569; color: #38bdf8; border-radius: 8px; font-family: monospace; outline: none; }
-        input:focus { border-color: #f43f5e; }
-        .btn-slice { width: 100%; background: linear-gradient(135deg, #f59e0b, #ea580c); color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; text-transform: uppercase; transition: 0.3s; margin-top: 10px; }
-        .btn-slice:hover { transform: scale(1.02); box-shadow: 0 5px 15px rgba(234, 88, 12, 0.4); }
-        #statsBox { margin-top: 20px; padding: 15px; background: #000; border-radius: 8px; font-family: monospace; font-size: 13px; color: #a6e3a1; border: 1px dashed #45475a; display: none; }
-        #downloadArea { margin-top: 15px; display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; padding-right: 5px; }
-        .btn-download { background: #334155; color: #38bdf8; border: 1px solid #475569; padding: 10px; border-radius: 6px; cursor: pointer; text-align: left; font-family: monospace; font-weight: bold; transition: 0.2s; }
-        .btn-download:hover { background: #475569; color: #fff; }
-        .btn-auto-all { background: #10b981; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 10px; }
+        h2 { text-align: center; color: #38bdf8; text-transform: uppercase; margin-bottom: 25px; font-weight: 900; }
+        input { width: 100%; box-sizing: border-box; padding: 14px; margin-bottom: 15px; background-color: #0f172a; border: 1px solid #475569; color: #38bdf8; border-radius: 8px; outline: none; font-family: monospace;}
+        input:focus { border-color: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.3); }
+        .mode-switch { background: #334155; padding: 12px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: bold;}
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 12px; transition: 0.2s; }
+        .btn-create { background: linear-gradient(135deg, #0ea5e9, #2563eb); color: white; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3); }
+        .btn-create:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(14, 165, 233, 0.5); }
+        .btn-delete { background: linear-gradient(135deg, #f43f5e, #e11d48); color: white; margin-top: 15px; opacity: 0.9; font-size: 13px;}
+        .btn-delete:hover { opacity: 1; }
+        #logBox { background: #000; color: #a3e635; padding: 12px; border-radius: 8px; font-size: 12px; height: 130px; overflow-y: auto; font-family: monospace; border: 1px solid #334155; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>🔪 MÁY CHÉM FILE SLL</h2>
+        <h2>🚀 XƯỞNG IN KEY V3.6</h2>
         
-        <div class="input-group">
-            <label>1. Chọn cái file siêu to khổng lồ của sếp (.txt):</label>
-            <input type="file" id="fileInput" accept=".txt">
+        <input type="text" id="supaUrl" placeholder="Supabase URL (Tự động lưu)">
+        <input type="password" id="supaKey" placeholder="Supabase API Key (Tự động lưu)">
+        <input type="number" id="numKeys" placeholder="Số lượng Key muốn nạp (Ví dụ: 10000)">
+        
+        <div class="mode-switch">
+            <span>⚡ Chế độ ép xung (Nhanh & Tải file)</span>
+            <input type="checkbox" id="bulkMode" checked style="width: auto; margin: 0; transform: scale(1.3);">
         </div>
 
-        <div class="input-group">
-            <label>2. Muốn mỗi file con chứa bao nhiêu Key?</label>
-            <input type="number" id="linesPerChunk" value="30000" placeholder="Khuyên dùng: 20000 - 30000">
-        </div>
-
-        <button class="btn-slice" onclick="processFile()">⚡ CHÉM FILE NGAY</button>
+        <button class="btn-create" onclick="createKeys()">🔥 BẮT ĐẦU BƠM KEY</button>
         
-        <div id="statsBox"></div>
-        <div id="downloadArea"></div>
+        <div id="logBox">Hệ thống sẵn sàng. Đợi lệnh sếp...</div>
+
+        <button class="btn-delete" onclick="deleteAllKeys()">💀 HỦY DIỆT KHO (DỌN SẠCH)</button>
     </div>
 
     <script>
-        let chunkedFiles = [];
-        let originalFileName = "Key";
+        // Auto Load API Key
+        window.onload = function() {
+            if(localStorage.getItem('savedUrl')) document.getElementById('supaUrl').value = localStorage.getItem('savedUrl');
+            if(localStorage.getItem('savedKey')) document.getElementById('supaKey').value = localStorage.getItem('savedKey');
+        }
 
-        function processFile() {
-            const fileInput = document.getElementById('fileInput').files[0];
-            const linesPerChunk = parseInt(document.getElementById('linesPerChunk').value);
-            const statsBox = document.getElementById('statsBox');
-            const downloadArea = document.getElementById('downloadArea');
+        async function createKeys() {
+            const url = document.getElementById('supaUrl').value.trim();
+            const key = document.getElementById('supaKey').value.trim();
+            const count = parseInt(document.getElementById('numKeys').value);
+            const isBulk = document.getElementById('bulkMode').checked;
+            const logBox = document.getElementById('logBox');
 
-            if (!fileInput) return Swal.fire('Lỗi!', 'Sếp chưa chọn file kìa!', 'warning');
-            if (!linesPerChunk || linesPerChunk <= 0) return Swal.fire('Lỗi!', 'Số dòng mỗi file phải lớn hơn 0!', 'warning');
-
-            // Lấy tên file gốc bỏ đuôi .txt đi
-            originalFileName = fileInput.name.replace('.txt', '');
-
-            Swal.fire({ title: 'Đang băm file...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-
-            const reader = new FileReader();
+            if (!url || !key || !count) return Swal.fire('Thiếu dữ liệu!', 'Sếp điền đủ URL, API Key và Số lượng đi!', 'warning');
             
-            reader.onload = function(e) {
-                // Đọc file và băm thành mảng các dòng (lọc luôn dòng trống)
-                const text = e.target.result;
-                const lines = text.split('\n').map(line => line.trim()).filter(line => line !== '');
-                const totalLines = lines.length;
+            // Auto Save API Key
+            localStorage.setItem('savedUrl', url);
+            localStorage.setItem('savedKey', key);
 
-                if (totalLines === 0) {
-                    return Swal.fire('File trống!', 'Trong file đéo có cái Key nào sếp ạ!', 'error');
+            const supaClient = supabase.createClient(url, key);
+            let allGeneratedKeys = [];
+            logBox.innerHTML = "⏳ Đang kết nối máy chủ Supabase...<br>";
+
+            const chunkSize = 1000;
+            for (let i = 0; i < count; i += chunkSize) {
+                const currentBatchSize = Math.min(chunkSize, count - i);
+                const batchData = [];
+                for (let j = 0; j < currentBatchSize; j++) {
+                    const k = `VIP-${Math.random().toString(36).substr(2, 4).toUpperCase()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+                    batchData.push({ code: k });
+                    if(isBulk) allGeneratedKeys.push(k);
                 }
 
-                chunkedFiles = [];
-                downloadArea.innerHTML = "";
+                // 🔥 MA THUẬT NẰM Ở ĐÂY: Dùng UPSERT và Bỏ qua trùng lặp
+                const { error } = await supaClient.from('vouchers').upsert(batchData, { 
+                    onConflict: 'code', 
+                    ignoreDuplicates: true 
+                });
                 
-                // Thuật toán chia lô
-                for (let i = 0; i < totalLines; i += linesPerChunk) {
-                    const chunk = lines.slice(i, i + linesPerChunk);
-                    chunkedFiles.push(chunk.join('\n'));
+                if (error) {
+                    logBox.innerHTML += `<span style="color:#f43f5e;">❌ Lỗi chèn: ${error.message}</span><br>`;
+                    return Swal.fire('Lỗi Database!', error.message, 'error');
                 }
+                
+                logBox.innerHTML += `✅ Đã bơm an toàn: ${Math.min(i + chunkSize, count)}/${count}<br>`;
+                logBox.scrollTop = logBox.scrollHeight;
+            }
 
-                const totalChunks = chunkedFiles.length;
-
-                // Cập nhật thống kê
-                statsBox.style.display = "block";
-                statsBox.innerHTML = `📊 TỔNG KẾT:<br>- Số Key gốc: ${totalLines.toLocaleString()}<br>- Chém thành: ${totalChunks} file nhỏ<br>- Mỗi file: ~${linesPerChunk.toLocaleString()} Key`;
-
-                // Tạo nút Tải Tất Cả
-                if(totalChunks > 1) {
-                    const autoBtn = document.createElement('button');
-                    autoBtn.className = 'btn-auto-all';
-                    autoBtn.innerHTML = `📥 TẢI TẤT CẢ ${totalChunks} FILE 1 LÚC (TỰ ĐỘNG)`;
-                    autoBtn.onclick = downloadAllAuto;
-                    downloadArea.appendChild(autoBtn);
-                }
-
-                // Tạo các nút tải từng file
-                for (let i = 0; i < totalChunks; i++) {
-                    const btn = document.createElement('button');
-                    btn.className = 'btn-download';
-                    btn.innerHTML = `📄 Tải ${originalFileName}_Phan_${i + 1}.txt (${chunkedFiles[i].split('\n').length} dòng)`;
-                    btn.onclick = () => downloadSingleFile(i);
-                    downloadArea.appendChild(btn);
-                }
-
-                Swal.close();
-            };
-
-            reader.readAsText(fileInput);
+            if(isBulk) {
+                Swal.fire({
+                    title: 'THÀNH CÔNG!',
+                    text: `Đã nạp ${count} Key vào kho (Bỏ qua các mã trùng). Sếp tải file txt luôn nhé?`,
+                    icon: 'success',
+                    showCancelButton: true,
+                    confirmButtonColor: '#10b981',
+                    confirmButtonText: 'Tải File .txt',
+                    cancelButtonText: 'Đéo cần'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const blob = new Blob([allGeneratedKeys.join('\n')], { type: 'text/plain' });
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = `Key_Edu_SLL_${count}_${new Date().getTime()}.txt`;
+                        a.click();
+                    }
+                });
+            } else {
+                Swal.fire('Thành Công', `Đã bơm xong ${count} Key!`, 'success');
+            }
         }
 
-        // Tải 1 file lẻ
-        function downloadSingleFile(index) {
-            const blob = new Blob([chunkedFiles[index]], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${originalFileName}_Phan_${index + 1}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
+        async function deleteAllKeys() {
+            const url = document.getElementById('supaUrl').value.trim();
+            const key = document.getElementById('supaKey').value.trim();
+            if (!url || !key) return Swal.fire('Lỗi!', 'Nhập API Key vào mới cấp quyền Xóa được!', 'error');
 
-        // Tải tất cả tự động (delay 1 giây mỗi file để né việc Android chặn popup)
-        function downloadAllAuto() {
-            Swal.fire({ title: 'Đang tải hàng loạt...', text: 'Đừng tắt web, trình duyệt đang xả file xuống máy sếp!', icon: 'info', toast: true, position: 'top-end', showConfirmButton: false, timer: chunkedFiles.length * 1000 + 1000 });
-            
-            chunkedFiles.forEach((_, index) => {
-                setTimeout(() => {
-                    downloadSingleFile(index);
-                }, index * 800); // Cách nhau 0.8 giây để Android không bị ngáo
+            const result = await Swal.fire({
+                title: 'HỦY DIỆT DATABASE?',
+                text: "Sếp có chắc chắn muốn xóa sạch toàn bộ Key không? Bay màu luôn đó!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e11d48',
+                cancelButtonColor: '#334155',
+                confirmButtonText: 'Đúng, Quét Sạch!',
+                cancelButtonText: 'Hủy'
             });
+
+            if (result.isConfirmed) {
+                const supaClient = supabase.createClient(url, key);
+                Swal.fire({ title: 'Đang dọn rác...', html: 'Đang lùng sục từng ngóc ngách...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+                
+                let totalDeleted = 0;
+                let keepDeleting = true;
+                
+                while (keepDeleting) {
+                    const { data, error } = await supaClient.from('vouchers').select('code').limit(1000);
+                    if (error) return Swal.fire('Lỗi Quét!', error.message, 'error');
+                    
+                    if (data.length === 0) { 
+                        keepDeleting = false; 
+                    } else {
+                        const keys = data.map(i => i.code);
+                        const { error: delErr } = await supaClient.from('vouchers').delete().in('code', keys);
+                        if (delErr) return Swal.fire('Lỗi Xóa!', delErr.message, 'error');
+                        totalDeleted += keys.length;
+                    }
+                }
+                Swal.fire('Hoàn Tất!', `Đã tiêu diệt tổng cộng ${totalDeleted} Key. Database trống trơn!`, 'success');
+                document.getElementById('logBox').innerHTML = "Hệ thống sẵn sàng. Đợi lệnh sếp...<br>";
+            }
         }
     </script>
 </body>
