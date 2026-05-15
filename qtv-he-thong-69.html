@@ -3,43 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADMIN PANEL V3.5 - BULK MODE</title>
+    <title>ADMIN PANEL V3.6 - CHỐNG TRÙNG LẶP</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #0b1120; color: #f8fafc; padding: 20px; display: flex; justify-content: center; }
         .container { background-color: #1e293b; border-radius: 16px; padding: 30px; width: 100%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #334155; }
-        h2 { text-align: center; color: #38bdf8; text-transform: uppercase; margin-bottom: 25px; }
-        input { width: 100%; box-sizing: border-box; padding: 14px; margin-bottom: 15px; background-color: #0f172a; border: 1px solid #475569; color: #38bdf8; border-radius: 8px; outline: none; }
-        .mode-switch { background: #334155; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
-        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 12px; }
-        .btn-create { background: linear-gradient(135deg, #0ea5e9, #2563eb); color: white; }
-        .btn-delete { background: #f43f5e; color: white; opacity: 0.8; font-size: 12px; }
-        #logBox { background: #000; color: #a3e635; padding: 12px; border-radius: 8px; font-size: 12px; height: 120px; overflow-y: auto; font-family: monospace; border: 1px solid #334155; margin-bottom: 15px; }
+        h2 { text-align: center; color: #38bdf8; text-transform: uppercase; margin-bottom: 25px; font-weight: 900; }
+        input { width: 100%; box-sizing: border-box; padding: 14px; margin-bottom: 15px; background-color: #0f172a; border: 1px solid #475569; color: #38bdf8; border-radius: 8px; outline: none; font-family: monospace;}
+        input:focus { border-color: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.3); }
+        .mode-switch { background: #334155; padding: 12px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: bold;}
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 12px; transition: 0.2s; }
+        .btn-create { background: linear-gradient(135deg, #0ea5e9, #2563eb); color: white; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3); }
+        .btn-create:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(14, 165, 233, 0.5); }
+        .btn-delete { background: linear-gradient(135deg, #f43f5e, #e11d48); color: white; margin-top: 15px; opacity: 0.9; font-size: 13px;}
+        .btn-delete:hover { opacity: 1; }
+        #logBox { background: #000; color: #a3e635; padding: 12px; border-radius: 8px; font-size: 12px; height: 130px; overflow-y: auto; font-family: monospace; border: 1px solid #334155; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>🚀 XƯỞNG IN KEY SLL V3.5</h2>
+        <h2>🚀 XƯỞNG IN KEY V3.6</h2>
         
-        <input type="text" id="supaUrl" placeholder="Supabase URL">
-        <input type="password" id="supaKey" placeholder="Supabase API Key">
-        <input type="number" id="numKeys" placeholder="Số lượng (Ví dụ: 10000)">
+        <input type="text" id="supaUrl" placeholder="Supabase URL (Tự động lưu)">
+        <input type="password" id="supaKey" placeholder="Supabase API Key (Tự động lưu)">
+        <input type="number" id="numKeys" placeholder="Số lượng Key muốn nạp (Ví dụ: 10000)">
         
         <div class="mode-switch">
-            <span>⚡ Chế độ siêu tốc (Không hiện mã)</span>
-            <input type="checkbox" id="bulkMode" checked style="width: auto; margin: 0;">
+            <span>⚡ Chế độ ép xung (Nhanh & Tải file)</span>
+            <input type="checkbox" id="bulkMode" checked style="width: auto; margin: 0; transform: scale(1.3);">
         </div>
 
         <button class="btn-create" onclick="createKeys()">🔥 BẮT ĐẦU BƠM KEY</button>
         
-        <div id="logBox">Sẵn sàng...</div>
+        <div id="logBox">Hệ thống sẵn sàng. Đợi lệnh sếp...</div>
 
-        <button class="btn-delete" onclick="deleteAllKeys()">💀 DỌN SẠCH KHO</button>
+        <button class="btn-delete" onclick="deleteAllKeys()">💀 HỦY DIỆT KHO (DỌN SẠCH)</button>
     </div>
 
     <script>
+        // Auto Load API Key
         window.onload = function() {
             if(localStorage.getItem('savedUrl')) document.getElementById('supaUrl').value = localStorage.getItem('savedUrl');
             if(localStorage.getItem('savedKey')) document.getElementById('supaKey').value = localStorage.getItem('savedKey');
@@ -52,14 +56,15 @@
             const isBulk = document.getElementById('bulkMode').checked;
             const logBox = document.getElementById('logBox');
 
-            if (!url || !key || !count) return Swal.fire('Thiếu dữ liệu!', 'Điền đủ thông số sếp ơi!', 'warning');
+            if (!url || !key || !count) return Swal.fire('Thiếu dữ liệu!', 'Sếp điền đủ URL, API Key và Số lượng đi!', 'warning');
             
+            // Auto Save API Key
             localStorage.setItem('savedUrl', url);
             localStorage.setItem('savedKey', key);
 
             const supaClient = supabase.createClient(url, key);
             let allGeneratedKeys = [];
-            logBox.innerHTML = "⏳ Đang chuẩn bị dữ liệu...<br>";
+            logBox.innerHTML = "⏳ Đang kết nối máy chủ Supabase...<br>";
 
             const chunkSize = 1000;
             for (let i = 0; i < count; i += chunkSize) {
@@ -68,61 +73,85 @@
                 for (let j = 0; j < currentBatchSize; j++) {
                     const k = `VIP-${Math.random().toString(36).substr(2, 4).toUpperCase()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
                     batchData.push({ code: k });
-                    allGeneratedKeys.push(k);
+                    if(isBulk) allGeneratedKeys.push(k);
                 }
 
-                const { error } = await supaClient.from('vouchers').insert(batchData);
-                if (error) return Swal.fire('Lỗi!', error.message, 'error');
+                // 🔥 MA THUẬT NẰM Ở ĐÂY: Dùng UPSERT và Bỏ qua trùng lặp
+                const { error } = await supaClient.from('vouchers').upsert(batchData, { 
+                    onConflict: 'code', 
+                    ignoreDuplicates: true 
+                });
                 
-                logBox.innerHTML += `✅ Đã bơm: ${Math.min(i + chunkSize, count)}/${count}<br>`;
+                if (error) {
+                    logBox.innerHTML += `<span style="color:#f43f5e;">❌ Lỗi chèn: ${error.message}</span><br>`;
+                    return Swal.fire('Lỗi Database!', error.message, 'error');
+                }
+                
+                logBox.innerHTML += `✅ Đã bơm an toàn: ${Math.min(i + chunkSize, count)}/${count}<br>`;
                 logBox.scrollTop = logBox.scrollHeight;
             }
 
-            Swal.fire({
-                title: 'THÀNH CÔNG!',
-                text: `Đã nạp ${count} Key. Sếp muốn tải file về luôn không?`,
-                icon: 'success',
-                showCancelButton: true,
-                confirmButtonText: 'Tải File .txt',
-                cancelButtonText: 'Để sau'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const blob = new Blob([allGeneratedKeys.join('\n')], { type: 'text/plain' });
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = `SLL_Keys_${count}_${new Date().getTime()}.txt`;
-                    a.click();
-                }
-            });
+            if(isBulk) {
+                Swal.fire({
+                    title: 'THÀNH CÔNG!',
+                    text: `Đã nạp ${count} Key vào kho (Bỏ qua các mã trùng). Sếp tải file txt luôn nhé?`,
+                    icon: 'success',
+                    showCancelButton: true,
+                    confirmButtonColor: '#10b981',
+                    confirmButtonText: 'Tải File .txt',
+                    cancelButtonText: 'Đéo cần'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const blob = new Blob([allGeneratedKeys.join('\n')], { type: 'text/plain' });
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = `Key_Edu_SLL_${count}_${new Date().getTime()}.txt`;
+                        a.click();
+                    }
+                });
+            } else {
+                Swal.fire('Thành Công', `Đã bơm xong ${count} Key!`, 'success');
+            }
         }
 
         async function deleteAllKeys() {
             const url = document.getElementById('supaUrl').value.trim();
             const key = document.getElementById('supaKey').value.trim();
-            if (!url || !key) return Swal.fire('Lỗi!', 'Nhập API Key mới xóa được!', 'error');
+            if (!url || !key) return Swal.fire('Lỗi!', 'Nhập API Key vào mới cấp quyền Xóa được!', 'error');
 
             const result = await Swal.fire({
-                title: 'XÓA SẠCH KHO?',
-                text: "Toàn bộ dữ liệu sẽ bay màu!",
+                title: 'HỦY DIỆT DATABASE?',
+                text: "Sếp có chắc chắn muốn xóa sạch toàn bộ Key không? Bay màu luôn đó!",
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#f43f5e',
-                confirmButtonText: 'Xóa ngay!',
+                confirmButtonColor: '#e11d48',
+                cancelButtonColor: '#334155',
+                confirmButtonText: 'Đúng, Quét Sạch!',
                 cancelButtonText: 'Hủy'
             });
 
             if (result.isConfirmed) {
                 const supaClient = supabase.createClient(url, key);
-                Swal.fire({ title: 'Đang dọn kho...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+                Swal.fire({ title: 'Đang dọn rác...', html: 'Đang lùng sục từng ngóc ngách...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
                 
+                let totalDeleted = 0;
                 let keepDeleting = true;
+                
                 while (keepDeleting) {
                     const { data, error } = await supaClient.from('vouchers').select('code').limit(1000);
-                    if (error || data.length === 0) { keepDeleting = false; break; }
-                    const keys = data.map(i => i.code);
-                    await supaClient.from('vouchers').delete().in('code', keys);
+                    if (error) return Swal.fire('Lỗi Quét!', error.message, 'error');
+                    
+                    if (data.length === 0) { 
+                        keepDeleting = false; 
+                    } else {
+                        const keys = data.map(i => i.code);
+                        const { error: delErr } = await supaClient.from('vouchers').delete().in('code', keys);
+                        if (delErr) return Swal.fire('Lỗi Xóa!', delErr.message, 'error');
+                        totalDeleted += keys.length;
+                    }
                 }
-                Swal.fire('Xong!', 'Kho đã sạch bóng quân thù.', 'success');
+                Swal.fire('Hoàn Tất!', `Đã tiêu diệt tổng cộng ${totalDeleted} Key. Database trống trơn!`, 'success');
+                document.getElementById('logBox').innerHTML = "Hệ thống sẵn sàng. Đợi lệnh sếp...<br>";
             }
         }
     </script>
