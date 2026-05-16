@@ -4,69 +4,69 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    const { code } = req.query;
+    res.setHeader('Access-Control-Allow-Methods', 'POST');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (!code) return res.status(400).json({ error: "Sếp chưa nhập mã code kìa!" });
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Chỉ nhận POST' });
+
+    const { userKey, productId } = req.body;
+    if (!userKey || !productId) return res.status(400).json({ error: "Thiếu dữ liệu!" });
 
     try {
-        // 1. KIỂM TRA MÃ SUPABASE
-        const { data: voucher, error: dbError } = await supabase
-            .from('vouchers').select('*').eq('code', code).eq('is_used', false).single();
+        // 1. TÌM KEY TRONG KÉT SẮT
+        const { data: keyData, error: dbError } = await supabase
+            .from('vouchers').select('*').eq('code', userKey).single();
 
-        if (dbError || !voucher) {
-            return res.status(400).json({ error: "Mã không hợp lệ hoặc đã bị húp rồi!" });
+        if (dbError || !keyData) return res.status(400).json({ error: "Key xịt hoặc đéo tồn tại!" });
+
+        // 2. CHECK XEM KEY DÙNG CHƯA
+        if (keyData.is_used) {
+            // Chửi thẳng mặt kèm thời gian dùng chính xác
+            const thoiGian = new Date(keyData.used_at).toLocaleString('vi-VN');
+            return res.status(400).json({ error: `Key này đã bị thằng nào húp vào lúc ${thoiGian} rồi sếp ơi!` });
         }
 
-        // 2. MUA HÀNG VỚI LINK CHUẨN BUY_PRODUCT
-        const apiKey = process.env.NL_API_KEY;
-        const productId = process.env.NL_PRODUCT_ID;
+        // 3. CHECK XEM CÓ MUA SAI SẢN PHẨM KHÔNG (ĐÚNG Ý SẾP)
+        if (keyData.product_id !== productId) {
+            return res.status(400).json({ error: "Gian lận! Key này đéo dùng để mua món hàng này!" });
+        }
+
+        // 4. MUA HÀNG TRÊN NGUYENLIEUMMO
+        const apiKey = process.env.NL_API_KEY; 
         const nguyenLieuApiUrl = 'https://nguyenlieummo.vn/api/buy_product';
         
-        // Đóng gói dữ liệu gửi đi (Bơm ĐỦ 3 THÔNG SỐ)
         const formData = new URLSearchParams();
-        formData.append('api_key', apiKey);
         formData.append('apikey', apiKey); 
-        formData.append('action', 'buyProduct'); // Đã thêm lệnh mua hàng chuẩn đét!
-        formData.append('id', productId);
+        formData.append('action', 'buyProduct'); 
+        formData.append('id', productId); 
         formData.append('amount', '1');
-
-        console.log("Đã đủ thông số, phi thẳng vào quầy thanh toán...");
 
         const nlResponse = await fetch(nguyenLieuApiUrl, {
             method: 'POST', 
-            headers: { 
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/javascript, */*; q=0.01'
-            },
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData
         });
 
-        // Đọc dữ liệu nó nhả ra
         const rawText = await nlResponse.text(); 
-        console.log("Web nguồn trả về: ", rawText);
+        let nlData = JSON.parse(rawText);
 
-        let nlData;
-        try {
-            nlData = JSON.parse(rawText);
-        } catch(e) {
-            return res.status(500).json({ error: "Nó nhả ra cục lỗi lạ: " + rawText.substring(0, 100) });
-        }
-
-        // 3. NHẬN HÀNG VÀ CHỐT ĐƠN
         if (nlData.status === 'success' || nlData.status === true || nlData.status === 200 || nlData.message === 'Thành công') {
-            // Mua ngon ơ -> Khóa cái mã voucher lại
-            await supabase.from('vouchers').update({ is_used: true }).eq('id', voucher.id);
+            const thongTinHang = nlData.data || nlData.list || JSON.stringify(nlData);
             
-            // Moi con Mail Edu ra trả về màn hình cho sếp
-            const thongTinMail = nlData.data || nlData.list || JSON.stringify(nlData);
-            return res.status(200).json({ success: true, data: thongTinMail });
+            // 5. LƯU BẰNG CHỨNG VÀO SUPABASE (LƯU LỊCH SỬ TỪNG GIÂY)
+            await supabase.from('vouchers').update({ 
+                is_used: true, // Đánh dấu đã dùng
+                used_at: new Date().toISOString(), // Lưu giờ phút giây phút hiện tại
+                account_data: typeof thongTinHang === 'string' ? thongTinHang : JSON.stringify(thongTinHang) // Lưu bằng chứng acc
+            }).eq('id', keyData.id);
+            
+            return res.status(200).json({ success: true, data: thongTinHang });
         } else {
-            // Hết tiền, sai ID, bảo trì...
-            return res.status(500).json({ error: "Web nguồn từ chối bán: " + (nlData.msg || nlData.message || "Không rõ lý do") });
+            return res.status(400).json({ error: "Sàn hết hàng hoặc lỗi: " + (nlData.msg || nlData.message) });
         }
 
     } catch (err) {
-        return res.status(500).json({ error: "Lỗi hệ thống Vercel: " + err.message });
+        return res.status(500).json({ error: "Lỗi hệ thống: " + err.message });
     }
 }
