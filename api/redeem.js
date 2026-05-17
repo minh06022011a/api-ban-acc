@@ -8,33 +8,42 @@ export default async function handler(req, res) {
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
+    // LẤY CÔNG TẮC VÀ TÊN CUSTOM TỪ DB
     if (req.method === 'GET') {
-        const { data } = await supabase.from('vouchers').select('account_data').eq('code', 'SYS_HIDDEN_PRODUCTS').single();
-        return res.status(200).json({ hidden: data && data.account_data ? JSON.parse(data.account_data) : [] });
+        const { data: hiddenData } = await supabase.from('vouchers').select('account_data').eq('code', 'SYS_HIDDEN_PRODUCTS').single();
+        const { data: nameData } = await supabase.from('vouchers').select('account_data').eq('code', 'SYS_CUSTOM_NAMES').single();
+        
+        return res.status(200).json({ 
+            hidden: hiddenData && hiddenData.account_data ? JSON.parse(hiddenData.account_data) : [],
+            customNames: nameData && nameData.account_data ? JSON.parse(nameData.account_data) : {}
+        });
     }
 
     if (req.method !== 'POST') return res.status(405).json({ error: 'Chỉ nhận POST/GET' });
 
-    const { userKey, productId } = req.body;
-    if (!userKey || !productId) return res.status(400).json({ error: "Thiếu dữ liệu!" });
+    const { userKey, productId, action } = req.body;
+    if (!userKey) return res.status(400).json({ error: "Thiếu dữ liệu Key!" });
 
     try {
-        const { data: keyData, error: dbError } = await supabase
-            .from('vouchers').select('*').eq('code', userKey).single();
-
+        const { data: keyData, error: dbError } = await supabase.from('vouchers').select('*').eq('code', userKey).single();
         if (dbError || !keyData) return res.status(400).json({ error: "Key xịt hoặc đéo tồn tại!" });
 
-        if (keyData.is_used) {
+        // NẾU KHÁCH CHỈ MUỐN XEM LẠI ACC ĐÃ MUA
+        if (action === 'check') {
+            if (!keyData.is_used) return res.status(400).json({ error: "Key này CÒN ZIN, chưa mua hàng lần nào!" });
             const thoiGian = new Date(keyData.used_at).toLocaleString('vi-VN');
-            return res.status(400).json({ error: `Key này đã bị thằng nào húp vào lúc ${thoiGian} rồi sếp ơi!` });
+            return res.status(200).json({ success: true, isCheck: true, data: keyData.account_data, time: thoiGian });
         }
 
-        if (keyData.product_id !== productId) return res.status(400).json({ error: "Gian lận! Sai món hàng!" });
+        // NẾU LÀ TIẾN HÀNH MUA HÀNG
+        if (keyData.is_used) {
+            return res.status(400).json({ error: `Key này đã dùng rồi sếp ơi! Vui lòng bấm "🔎 Tra Cứu Lại Key" để xem Acc!` });
+        }
+
+        if (keyData.product_id !== productId) return res.status(400).json({ error: "Gian lận! Key này không dành cho món hàng này!" });
 
         const apiKey = process.env.NL_API_KEY; 
         const formData = new URLSearchParams();
-        
-        // ĐÃ FIX LỖI TỬ HUYỆT Ở ĐÂY: api_key thay vì apikey
         formData.append('api_key', apiKey); 
         formData.append('action', 'buyProduct'); 
         formData.append('id', productId); 
@@ -49,17 +58,23 @@ export default async function handler(req, res) {
         const nlData = await nlResponse.json();
 
         if (nlData.status === 'success' || nlData.status === true || nlData.status === 200 || nlData.message === 'Thành công') {
-            const thongTinHang = nlData.data || nlData.list || JSON.stringify(nlData);
+            let thongTinHang = nlData.data || nlData.list || JSON.stringify(nlData);
+            
+            // MÁY CHÀ NHÁM: XÓA SẠCH DẤU [ ] " ĐỂ LẤY MỖI TK/MK
+            if (Array.isArray(thongTinHang)) thongTinHang = thongTinHang.join('\n');
+            else if (typeof thongTinHang !== 'string') thongTinHang = JSON.stringify(thongTinHang);
+            
+            thongTinHang = thongTinHang.replace(/[\[\]"]/g, '').replace(/\\n/g, '\n').trim();
             
             await supabase.from('vouchers').update({ 
                 is_used: true, 
                 used_at: new Date().toISOString(), 
-                account_data: typeof thongTinHang === 'string' ? thongTinHang : JSON.stringify(thongTinHang) 
+                account_data: thongTinHang 
             }).eq('id', keyData.id);
             
             return res.status(200).json({ success: true, data: thongTinHang });
         } else {
-            return res.status(400).json({ error: "Sàn báo: " + (nlData.msg || nlData.message) });
+            return res.status(400).json({ error: "Sàn báo lỗi: " + (nlData.msg || nlData.message) });
         }
     } catch (err) {
         return res.status(500).json({ error: "Lỗi hệ thống: " + err.message });
