@@ -8,7 +8,6 @@ export default async function handler(req, res) {
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    // KỸ NĂNG MỚI: BÁO CÁO CÔNG TẮC CHO WEB KHÁCH
     if (req.method === 'GET') {
         const { data } = await supabase.from('vouchers').select('account_data').eq('code', 'SYS_HIDDEN_PRODUCTS').single();
         return res.status(200).json({ hidden: data && data.account_data ? JSON.parse(data.account_data) : [] });
@@ -34,7 +33,9 @@ export default async function handler(req, res) {
 
         const apiKey = process.env.NL_API_KEY; 
         const formData = new URLSearchParams();
-        formData.append('apikey', apiKey); 
+        
+        // ĐÃ FIX LỖI TỬ HUYỆT Ở ĐÂY: api_key thay vì apikey
+        formData.append('api_key', apiKey); 
         formData.append('action', 'buyProduct'); 
         formData.append('id', productId); 
         formData.append('amount', '1');
@@ -58,7 +59,7 @@ export default async function handler(req, res) {
             
             return res.status(200).json({ success: true, data: thongTinHang });
         } else {
-            return res.status(400).json({ error: "Sàn hết hàng hoặc lỗi: " + (nlData.msg || nlData.message) });
+            return res.status(400).json({ error: "Sàn báo: " + (nlData.msg || nlData.message) });
         }
     } catch (err) {
         return res.status(500).json({ error: "Lỗi hệ thống: " + err.message });
