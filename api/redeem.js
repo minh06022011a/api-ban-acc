@@ -8,7 +8,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    // LẤY CÔNG TẮC VÀ TÊN CUSTOM TỪ DB
+    // V10: LẤY CẢ CÔNG TẮC ẨN VÀ TÊN MỚI TRẢ VỀ CHO WEB KHÁCH
     if (req.method === 'GET') {
         const { data: hiddenData } = await supabase.from('vouchers').select('account_data').eq('code', 'SYS_HIDDEN_PRODUCTS').single();
         const { data: nameData } = await supabase.from('vouchers').select('account_data').eq('code', 'SYS_CUSTOM_NAMES').single();
@@ -28,19 +28,18 @@ export default async function handler(req, res) {
         const { data: keyData, error: dbError } = await supabase.from('vouchers').select('*').eq('code', userKey).single();
         if (dbError || !keyData) return res.status(400).json({ error: "Key xịt hoặc đéo tồn tại!" });
 
-        // NẾU KHÁCH CHỈ MUỐN XEM LẠI ACC ĐÃ MUA
+        // TÍNH NĂNG KHÁCH XEM LẠI ACC
         if (action === 'check') {
             if (!keyData.is_used) return res.status(400).json({ error: "Key này CÒN ZIN, chưa mua hàng lần nào!" });
             const thoiGian = new Date(keyData.used_at).toLocaleString('vi-VN');
             return res.status(200).json({ success: true, isCheck: true, data: keyData.account_data, time: thoiGian });
         }
 
-        // NẾU LÀ TIẾN HÀNH MUA HÀNG
         if (keyData.is_used) {
             return res.status(400).json({ error: `Key này đã dùng rồi sếp ơi! Vui lòng bấm "🔎 Tra Cứu Lại Key" để xem Acc!` });
         }
 
-        if (keyData.product_id !== productId) return res.status(400).json({ error: "Gian lận! Key này không dành cho món hàng này!" });
+        if (keyData.product_id !== productId) return res.status(400).json({ error: "Gian lận! Sai món hàng!" });
 
         const apiKey = process.env.NL_API_KEY; 
         const formData = new URLSearchParams();
@@ -60,10 +59,9 @@ export default async function handler(req, res) {
         if (nlData.status === 'success' || nlData.status === true || nlData.status === 200 || nlData.message === 'Thành công') {
             let thongTinHang = nlData.data || nlData.list || JSON.stringify(nlData);
             
-            // MÁY CHÀ NHÁM: XÓA SẠCH DẤU [ ] " ĐỂ LẤY MỖI TK/MK
+            // MÁY CHÀ NHÁM: GỌT SẠCH DẤU NGOẶC RÁC
             if (Array.isArray(thongTinHang)) thongTinHang = thongTinHang.join('\n');
             else if (typeof thongTinHang !== 'string') thongTinHang = JSON.stringify(thongTinHang);
-            
             thongTinHang = thongTinHang.replace(/[\[\]"]/g, '').replace(/\\n/g, '\n').trim();
             
             await supabase.from('vouchers').update({ 
@@ -74,7 +72,7 @@ export default async function handler(req, res) {
             
             return res.status(200).json({ success: true, data: thongTinHang });
         } else {
-            return res.status(400).json({ error: "Sàn báo lỗi: " + (nlData.msg || nlData.message) });
+            return res.status(400).json({ error: "Sàn báo: " + (nlData.msg || nlData.message) });
         }
     } catch (err) {
         return res.status(500).json({ error: "Lỗi hệ thống: " + err.message });
