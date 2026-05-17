@@ -336,7 +336,7 @@ const DANH_MUC_SP = [
     { id: "22783", name: "MAIL LIVE TIKTOK YOUTUBE 2-4h✔️@hasakii.us (Giá: 95.55đ)", prefix: "MAIL" },
     { id: "22784", name: "MAIL LIVE TIKTOK YOUTUBE 8 -12h✔️@hasakii.us (Giá: 193.05đ)", prefix: "MAIL" },
     { id: "22785", name: "Gmail Edu LIVE  2h-4h✔️@hayate.us (Giá: 95.55đ)", prefix: "MAIL" },
-    { id: "22786", name: "Mail edu live 10p (Giá: 57đ)", prefix: "VIP" },
+    { id: "22786", name: "Mail edu live 10p (Giá: 57đ)", prefix: "MAIL" },
     { id: "22839", name: "GMail Edu thuê 90 ngày - 3 tháng có Gmail .org (Giá: 18748.2đ)", prefix: "MAIL" },
     { id: "22841", name: "GMail Edu  thuê 30 ngày - có Gmail .org (Giá: 3335.62đ)", prefix: "MAIL" },
     { id: "22842", name: "Gmail edu 7 ngày domain .us .org (Giá: 1273.12đ)", prefix: "MAIL" },
