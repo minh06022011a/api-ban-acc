@@ -8,7 +8,6 @@ export default async function handler(req, res) {
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    // V10: LẤY CẢ CÔNG TẮC ẨN VÀ TÊN MỚI TRẢ VỀ CHO WEB KHÁCH
     if (req.method === 'GET') {
         const { data: hiddenData } = await supabase.from('vouchers').select('account_data').eq('code', 'SYS_HIDDEN_PRODUCTS').single();
         const { data: nameData } = await supabase.from('vouchers').select('account_data').eq('code', 'SYS_CUSTOM_NAMES').single();
@@ -28,7 +27,6 @@ export default async function handler(req, res) {
         const { data: keyData, error: dbError } = await supabase.from('vouchers').select('*').eq('code', userKey).single();
         if (dbError || !keyData) return res.status(400).json({ error: "Key xịt hoặc đéo tồn tại!" });
 
-        // TÍNH NĂNG KHÁCH XEM LẠI ACC
         if (action === 'check') {
             if (!keyData.is_used) return res.status(400).json({ error: "Key này CÒN ZIN, chưa mua hàng lần nào!" });
             const thoiGian = new Date(keyData.used_at).toLocaleString('vi-VN');
@@ -39,7 +37,10 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: `Key này đã dùng rồi sếp ơi! Vui lòng bấm "🔎 Tra Cứu Lại Key" để xem Acc!` });
         }
 
-        if (keyData.product_id !== productId) return res.status(400).json({ error: "Gian lận! Sai món hàng!" });
+        // BÀI THUỐC FIX LỖI GIAN LẬN Ở ĐÂY SẾP NHÉ: ÉP VỀ CHỮ TRƯỚC KHI SO SÁNH
+        if (String(keyData.product_id) !== String(productId)) {
+            return res.status(400).json({ error: "Gian lận! Sai món hàng!" });
+        }
 
         const apiKey = process.env.NL_API_KEY; 
         const formData = new URLSearchParams();
@@ -59,7 +60,6 @@ export default async function handler(req, res) {
         if (nlData.status === 'success' || nlData.status === true || nlData.status === 200 || nlData.message === 'Thành công') {
             let thongTinHang = nlData.data || nlData.list || JSON.stringify(nlData);
             
-            // MÁY CHÀ NHÁM: GỌT SẠCH DẤU NGOẶC RÁC
             if (Array.isArray(thongTinHang)) thongTinHang = thongTinHang.join('\n');
             else if (typeof thongTinHang !== 'string') thongTinHang = JSON.stringify(thongTinHang);
             thongTinHang = thongTinHang.replace(/[\[\]"]/g, '').replace(/\\n/g, '\n').trim();
