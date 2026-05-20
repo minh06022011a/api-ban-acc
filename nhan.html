@@ -2,22 +2,49 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>NHẬN KEY CHÉM GIÁ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NHẬN KEY PHẦN THƯỞNG</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-white h-screen flex items-center justify-center p-4">
-    <div class="max-w-sm w-full bg-slate-900 p-6 rounded-xl border border-slate-700 text-center">
-        <h1 class="text-xl font-bold mb-4">🔑 MÃ KEY CỦA BẠN</h1>
-        <div id="result" class="bg-slate-800 p-4 rounded text-2xl font-black text-emerald-400">ĐANG GIẢI MÃ...</div>
+<body class="bg-slate-950 text-white h-screen flex items-center justify-center p-4 font-mono">
+    <div class="max-w-md w-full bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6 text-center">
+        <h1 class="text-xl font-bold text-emerald-400 mb-2">🎉 VƯỢT LINK THÀNH CÔNG!</h1>
+        <p class="text-xs text-slate-400 mb-6">Hãy copy mã bí mật dưới đây và gửi qua Inbox cho Admin kèm Link cần chém nhé.</p>
+        
+        <div class="bg-slate-950 border border-dashed border-emerald-500 p-4 rounded-xl mb-4">
+            <h2 id="txtKey" class="text-2xl font-black text-yellow-400 tracking-wider">ĐANG GIẢI MÃ...</h2>
+        </div>
+        
+        <button onclick="copyMa()" class="w-full bg-emerald-600 hover:bg-emerald-500 font-bold py-2.5 rounded-lg transition-all text-sm shadow-md">
+            📋 COPY MÃ KEY
+        </button>
     </div>
+
     <script>
-        function giaiMa(str) {
-            try { return decodeURIComponent(escape(atob(str.slice(0, -3).split('').reverse().join('')))); } 
-            catch(e) { return null; }
+        // Thuật toán giải mã HEX an toàn tuyệt đối với mọi loại URL
+        function giaiMaHex(str) {
+            try {
+                let clean = str.slice(0, -2); // Bỏ cái đuôi bảo mật "M7"
+                return clean.match(/.{1,2}/g).map(byte => String.fromCharCode(parseInt(byte, 16))).join('');
+            } catch (e) { return null; }
         }
-        const k = new URLSearchParams(window.location.search).get('d');
-        const key = k ? giaiMa(k) : null;
-        document.getElementById('result').innerText = key || "LỖI GIẢI MÃ";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const encodedData = urlParams.get('d');
+        let rawKey = "";
+
+        if (encodedData) {
+            rawKey = giaiMaHex(encodedData);
+            document.getElementById('txtKey').innerText = rawKey || "MÃ LỖI / HẾT HẠN";
+        } else {
+            document.getElementById('txtKey').innerText = "KHÔNG CÓ DỮ LIỆU";
+        }
+
+        function copyMa() {
+            if(!rawKey) return;
+            navigator.clipboard.writeText(rawKey);
+            alert("Đã copy! Mau đem gửi cho Admin nào!");
+        }
     </script>
 </body>
 </html>
