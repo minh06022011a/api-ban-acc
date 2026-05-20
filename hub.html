@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRẠM NHẬN NHIỆM VỤ CHÉM GIÁ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-slate-950 text-white h-screen flex items-center justify-center p-4 font-mono">
+    <div class="max-w-md w-full bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6 text-center">
+        <div class="w-16 h-16 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center mx-auto text-3xl mb-4">🚀</div>
+        <h1 class="text-xl font-black text-cyan-400 mb-2 uppercase">Hệ Thống Chém Giá Tự Động</h1>
+        <p class="text-sm text-slate-400 mb-6">Bấm vào nút dưới đây để lấy 1 Link nhiệm vụ. Vượt link thành công bạn sẽ nhận được Mã Key để Admin chém hộ!</p>
+        
+        <button id="btnLayLink" onclick="phatLinkNhiemVu()" class="w-full bg-blue-600 hover:bg-blue-500 font-black py-4 rounded-xl transition-all shadow-lg text-lg animate-pulse">
+            🎁 LẤY LINK VƯỢT YMN NGAY
+        </button>
+
+        <p class="text-xs text-slate-500 mt-6">*Lưu ý: Mỗi link chỉ chứa 1 mã Key duy nhất. Gian lận sẽ bị khóa mõm!</p>
+    </div>
+
+    <script>
+        // Kết nối Két sắt của sếp
+        const db = window.supabase.createClient('https://bnkutqwihepvrctuxwgj.supabase.co', 'sb_publishable_j4sBt5J3LL-i7oJo64Zcqg_Qqxararn');
+
+        async function phatLinkNhiemVu() {
+            const btn = document.getElementById('btnLayLink');
+            btn.innerHTML = 'ĐANG TÌM LINK TRONG KHO...';
+            btn.disabled = true;
+
+            // Chọc vào DB, lấy ngẫu nhiên 1 Key còn zin (is_used = false) và phải có link YMN (account_data)
+            const { data, error } = await db.from('vouchers')
+                .select('*')
+                .eq('product_id', 'CHEM_GIA')
+                .eq('is_used', false)
+                .not('account_data', 'is', null)
+                .limit(10); // Lấy 10 cái rồi random cho nó không bị trùng nhau nếu nhiều người click cùng lúc
+
+            if (error || !data || data.length === 0) {
+                Swal.fire('Hết Hàng!', 'Hiện tại Admin chưa bơm thêm link vào kho. Hãy quay lại sau nhé!', 'warning');
+                btn.innerHTML = '🎁 LẤY LINK VƯỢT YMN NGAY';
+                btn.disabled = false;
+                return;
+            }
+
+            // Chọn bốc thăm 1 link ngẫu nhiên trong số các link còn zin
+            const randomTask = data[Math.floor(Math.random() * data.length)];
+            const ymnLink = randomTask.account_data;
+
+            if(ymnLink.includes('yeumoney.com')) {
+                Swal.fire({
+                    title: 'TÌM THẤY NHIỆM VỤ!',
+                    text: 'Chuyển hướng tới trang YeuMoney để vượt link nhé!',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    // Mở tab mới cho khách đi vượt link
+                    window.location.href = ymnLink;
+                });
+            } else {
+                Swal.fire('Lỗi', 'Link trong kho bị hỏng, vui lòng bấm lại!', 'error');
+                btn.innerHTML = '🎁 LẤY LINK VƯỢT YMN NGAY';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
