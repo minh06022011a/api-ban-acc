@@ -49,7 +49,7 @@ export default async function handler(req, res) {
         formData.append('id', productId); 
         formData.append('amount', '1');
 
-        const nlResponse = await fetch('https://nguyenlieummo.vn/api/buy_product', {
+        const nlResponse = await fetch('https://mixmmo.com/api/buy_product', {
             method: 'POST', 
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData
